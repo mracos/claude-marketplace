@@ -1,0 +1,211 @@
+import { expect, test } from 'claude-code/testing'
+import { endTurn, stash, stub } from './harness.ts'
+
+test('registers /stash to run mid-turn', async ($, on) => {
+  const seen = stub(on)
+
+  await $.session.start({ surface: 'terminal', isInteractive: true, cwd: '/work' })
+
+  expect(seen.commands).toEqual([
+    expect.objectContaining({ name: 'stash', immediate: true }),
+  ])
+})
+
+test('session start shows what an earlier run left queued', async ($, on) => {
+  const seen = stub(on, { store: new Map([['session:s1', ['a', 'b']]]) })
+
+  await $.session.start({ surface: 'terminal', isInteractive: true, cwd: '/work' })
+
+  expect(seen.statuses).toEqual(['2 queued (/stash)'])
+})
+
+test('push saves the idea and says nothing Claude reads', async ($, on) => {
+  const seen = stub(on)
+
+  const answer = await stash($, 'rename the flag')
+
+  expect(answer.text).toBeUndefined()
+  expect(seen.store.get('session:s1')).toEqual(['rename the flag'])
+  expect(seen.toasts).toEqual(['Stashed (1 queued)'])
+  expect(seen.statuses).toEqual(['1 queued (/stash)'])
+})
+
+test('list shows numbered ideas as a dim line', async ($, on) => {
+  const seen = stub(on, { store: new Map([['session:s1', ['a', 'b']]]) })
+
+  await stash($)
+  await stash($, 'list')
+
+  expect(seen.logs).toEqual(['1. a\n2. b', '1. a\n2. b'])
+})
+
+test('pop moves the newest idea into the prompt box', async ($, on) => {
+  const seen = stub(on, { store: new Map([['session:s1', ['a', 'b']]]) })
+
+  await stash($, 'pop')
+
+  expect(seen.fills).toEqual([{ text: 'b', mode: 'insert' }])
+  expect(seen.store.get('session:s1')).toEqual(['a'])
+  expect(seen.statuses).toEqual(['1 queued (/stash)'])
+})
+
+test('pop by number, and the last pop clears the key and the status line', async ($, on) => {
+  const seen = stub(on, { store: new Map([['session:s1', ['a', 'b']]]) })
+
+  await stash($, 'pop 1')
+  await stash($, 'pop')
+
+  expect(seen.fills.map((f) => f.text)).toEqual(['a', 'b'])
+  expect(seen.store.has('session:s1')).toBe(false)
+  expect(seen.statuses).toEqual(['1 queued (/stash)', undefined])
+})
+
+test('pop shows the idea where no prompt box takes it', async ($, on) => {
+  const seen = stub(on, { store: new Map([['session:s1', ['a']]]), fills: false })
+
+  await stash($, 'pop')
+
+  expect(seen.logs).toEqual(['a'])
+  expect(seen.store.has('session:s1')).toBe(false)
+})
+
+test('pop and drop on an empty stash or a missing number change nothing', async ($, on) => {
+  const seen = stub(on, { store: new Map([['session:s1', ['a']]]) })
+
+  await stash($, 'pop 3')
+  await stash($, 'drop 2')
+
+  expect(seen.toasts).toEqual(['No item #3, the stash has 1', 'No item #2, the stash has 1'])
+  expect(seen.store.get('session:s1')).toEqual(['a'])
+  expect(seen.fills).toEqual([])
+})
+
+test('pop on an empty stash says so', async ($, on) => {
+  const seen = stub(on)
+
+  await stash($, 'pop')
+
+  expect(seen.toasts).toEqual(['Stash is empty.'])
+})
+
+test('drop removes without filling the prompt', async ($, on) => {
+  const seen = stub(on, { store: new Map([['session:s1', ['a', 'b', 'c']]]) })
+
+  await stash($, 'drop 2')
+
+  expect(seen.store.get('session:s1')).toEqual(['a', 'c'])
+  expect(seen.toasts).toEqual(['Dropped: b'])
+  expect(seen.fills).toEqual([])
+})
+
+test('clear empties this session only', async ($, on) => {
+  const store = new Map<string, unknown>([
+    ['session:s1', ['a', 'b']],
+    ['session:other', ['keep']],
+  ])
+  const seen = stub(on, { store })
+
+  await stash($, 'clear')
+
+  expect(store.has('session:s1')).toBe(false)
+  expect(store.get('session:other')).toEqual(['keep'])
+  expect(seen.toasts).toEqual(['Cleared 2'])
+})
+
+test('sessions keep separate stashes', async ($, on) => {
+  const store = new Map<string, unknown>([['session:other', ['theirs']]])
+  const seen = stub(on, { sessionId: 'mine', store })
+
+  await stash($, 'ours')
+  await stash($)
+
+  expect(store.get('session:mine')).toEqual(['ours'])
+  expect(seen.logs).toEqual(['1. ours'])
+})
+
+test('a corrupt stored value reads as empty', async ($, on) => {
+  const seen = stub(on, { store: new Map([['session:s1', 'not a list']]) })
+
+  await stash($, 'fresh')
+
+  expect(seen.store.get('session:s1')).toEqual(['fresh'])
+})
+
+test('push with no idea shows usage', async ($, on) => {
+  const seen = stub(on)
+
+  await stash($, 'push')
+
+  expect(seen.toasts[0]).toMatch(/^Usage: \/stash/)
+  expect(seen.store.size).toBe(0)
+})
+
+test('/clear refreshes the status line for the new session', async ($, on) => {
+  const seen = stub(on, { sessionId: 'after-clear' })
+
+  await $.classic.SessionStart({ source: 'clear' })
+
+  expect(seen.statuses).toEqual([undefined])
+})
+
+test('a turn that ends with nothing queued pops the newest idea', async ($, on) => {
+  const seen = stub(on, { store: new Map([['session:s1', ['a', 'b']]]) })
+
+  await endTurn($)
+  await seen.clock.advance(1000)
+
+  expect(seen.fills).toEqual([{ text: 'b', mode: 'insert' }])
+  expect(seen.store.get('session:s1')).toEqual(['a'])
+  expect(seen.toasts).toEqual(['Popped (1 queued)'])
+})
+
+test('a queued prompt starting the next turn holds the stash', async ($, on) => {
+  const seen = stub(on, { store: new Map([['session:s1', ['a']]]) })
+
+  await endTurn($)
+  await $.turn.start({ text: 'queued prompt', turnId: 't2' })
+  await seen.clock.advance(1000)
+
+  expect(seen.fills).toEqual([])
+  expect(seen.store.get('session:s1')).toEqual(['a'])
+})
+
+test('auto-pop leaves a draft in the prompt box alone', async ($, on) => {
+  const seen = stub(on, { store: new Map([['session:s1', ['a']]]), draft: 'half typed' })
+
+  await endTurn($)
+  await seen.clock.advance(1000)
+
+  expect(seen.fills).toEqual([])
+  expect(seen.store.get('session:s1')).toEqual(['a'])
+})
+
+test('interrupted turns and subagent turns do not pop', async ($, on) => {
+  const seen = stub(on, { store: new Map([['session:s1', ['a']]]) })
+
+  await endTurn($, { reason: 'aborted', isAborted: true })
+  await endTurn($, { agentId: 'sub1' })
+  await seen.clock.advance(1000)
+
+  expect(seen.fills).toEqual([])
+})
+
+test('auto-pop keeps the idea queued where no prompt box takes it', async ($, on) => {
+  const seen = stub(on, { store: new Map([['session:s1', ['a']]]), fills: false })
+
+  await endTurn($)
+  await seen.clock.advance(1000)
+
+  expect(seen.store.get('session:s1')).toEqual(['a'])
+  expect(seen.logs).toEqual([])
+})
+
+test('an empty stash makes a finished turn a no-op', async ($, on) => {
+  const seen = stub(on)
+
+  await endTurn($)
+  await seen.clock.advance(1000)
+
+  expect(seen.fills).toEqual([])
+  expect(seen.toasts).toEqual([])
+})

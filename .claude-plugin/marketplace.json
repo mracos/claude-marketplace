@@ -1,0 +1,19 @@
+{
+  "name": "mracos",
+  "description": "Claude Code plugins by mracos",
+  "owner": {
+    "name": "mracos"
+  },
+  "plugins": [
+    {
+      "name": "stash",
+      "source": "./plugins/stash",
+      "description": "Claude Code mod: queue ideas mid-session with /stash, without interrupting Claude"
+    },
+    {
+      "name": "prs",
+      "source": "./plugins/prs",
+      "description": "Claude Code mod: every PR the session created under the prompt, open first, merged and closed dimmed, each a link"
+    }
+  ]
+}

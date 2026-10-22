@@ -1,0 +1,8 @@
+{
+  "name": "stash",
+  "version": "0.1.0",
+  "description": "Queue ideas mid-session with /stash, without interrupting Claude, and pop them into the prompt later",
+  "author": { "name": "mracos" },
+  "license": "MIT",
+  "keywords": ["mod", "queue", "workflow"]
+}

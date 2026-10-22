@@ -1,0 +1,4 @@
+{
+  "description": "The stash hooks module",
+  "modules": ["./register.ts"]
+}

@@ -1,0 +1,4 @@
+{
+  "description": "The prs hooks module",
+  "modules": ["./register.tsx"]
+}
