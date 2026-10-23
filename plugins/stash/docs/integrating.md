@@ -23,14 +23,16 @@ Keep new behavior in `hooks/stash.ts` when it can be expressed without `$`, and 
 | `session.start` | Registers `/stash` with `immediate: true`, then shows the status line for whatever this session already has queued |
 | `classic.SessionStart` (`clear`, `resume`, `fork`) | Those move to another session id without firing `session.start` again, so the status line is refreshed here |
 | `turn.start` | Counts main-loop turns (a subagent's run raises none) |
-| `turn.complete` | On a main-loop turn that ended with `reason: 'answer'`, waits `AUTO_POP_DELAY_MS` and auto-pops if no turn started meanwhile |
+| `turn.complete` | On a main-loop turn that ended with `reason: 'answer'`, waits `AUTO_SEND_DELAY_MS` and sends the newest idea if no turn started meanwhile |
 | `command.run` (`stash`) | Parses the arguments and acts. Always returns `{}`, so nothing is printed as the command's output |
 
 The command is registered before the status refresh on purpose: a hook that throws skips everything after the throw, and a failed status read must not leave the command unregistered.
 
-## Auto-pop
+## Auto-send
 
-The mods API exposes no queue of pending prompts, so "nothing queued" is inferred: a prompt typed mid-turn starts the next turn as soon as the current one ends, so a `turn.start` count that has not moved a second after `turn.complete` means nothing was waiting. The pop only fills an empty box (`$.prompt.read()`), which also covers the queued prompts an interrupt hands back to the box, and the idea leaves the queue only once `$.prompt.fill` reports `isFilled`, so `claude -p` keeps it queued instead of printing it.
+The mods API exposes no queue of pending prompts, so "nothing queued" is inferred: a prompt typed mid-turn starts the next turn as soon as the current one ends, so a `turn.start` count that has not moved a second after `turn.complete` means nothing was waiting. The idea goes out through `$.prompt.submit({ asUser: true })`, read as the person's own words, and starts a turn whose end sends the next one.
+
+It sends only into an empty box (`$.prompt.read()`), which also covers the queued prompts an interrupt hands back to the box, and only in an interactive session (`session.start`'s `isInteractive`): in `claude -p` each sent idea would extend the run. The idea leaves the queue only once the prompt entered; a hook that answers `{ drop }` leaves it queued.
 
 ## Storage
 

@@ -1,5 +1,5 @@
 import { expect, test } from 'claude-code/testing'
-import { endTurn, stash, stub } from './harness.ts'
+import { endTurn, startSession, stash, stub } from './harness.ts'
 
 test('registers /stash to run mid-turn', async ($, on) => {
   const seen = stub(on)
@@ -148,64 +148,97 @@ test('/clear refreshes the status line for the new session', async ($, on) => {
   expect(seen.statuses).toEqual([undefined])
 })
 
-test('a turn that ends with nothing queued pops the newest idea', async ($, on) => {
+test('a turn that ends with nothing queued sends the newest idea as the next prompt', async ($, on) => {
   const seen = stub(on, { store: new Map([['session:s1', ['a', 'b']]]) })
+  await startSession($)
 
   await endTurn($)
   await seen.clock.advance(1000)
 
-  expect(seen.fills).toEqual([{ text: 'b', mode: 'insert' }])
+  expect(seen.submits).toEqual([{ text: 'b', asUser: true }])
+  expect(seen.fills).toEqual([])
   expect(seen.store.get('session:s1')).toEqual(['a'])
-  expect(seen.toasts).toEqual(['Popped (1 queued)'])
+  expect(seen.toasts).toEqual(['Sent a stashed idea (1 queued)'])
+})
+
+test('the turn a sent idea starts sends the next on its end, until the stash is empty', async ($, on) => {
+  const seen = stub(on, { store: new Map([['session:s1', ['a', 'b']]]) })
+  await startSession($)
+
+  await endTurn($)
+  await seen.clock.advance(1000)
+  await $.turn.start({ text: 'b', turnId: 't2' })
+  await endTurn($, { turnId: 't2' })
+  await seen.clock.advance(1000)
+
+  expect(seen.submits.map((s) => s.text)).toEqual(['b', 'a'])
+  expect(seen.store.has('session:s1')).toBe(false)
+  expect(seen.toasts.at(-1)).toBe('Sent the last stashed idea')
 })
 
 test('a queued prompt starting the next turn holds the stash', async ($, on) => {
   const seen = stub(on, { store: new Map([['session:s1', ['a']]]) })
+  await startSession($)
 
   await endTurn($)
   await $.turn.start({ text: 'queued prompt', turnId: 't2' })
   await seen.clock.advance(1000)
 
-  expect(seen.fills).toEqual([])
+  expect(seen.submits).toEqual([])
   expect(seen.store.get('session:s1')).toEqual(['a'])
 })
 
-test('auto-pop leaves a draft in the prompt box alone', async ($, on) => {
+test('a draft in the prompt box holds the stash', async ($, on) => {
   const seen = stub(on, { store: new Map([['session:s1', ['a']]]), draft: 'half typed' })
+  await startSession($)
 
   await endTurn($)
   await seen.clock.advance(1000)
 
-  expect(seen.fills).toEqual([])
+  expect(seen.submits).toEqual([])
   expect(seen.store.get('session:s1')).toEqual(['a'])
 })
 
-test('interrupted turns and subagent turns do not pop', async ($, on) => {
+test('interrupted turns and subagent turns send nothing', async ($, on) => {
   const seen = stub(on, { store: new Map([['session:s1', ['a']]]) })
+  await startSession($)
 
   await endTurn($, { reason: 'aborted', isAborted: true })
   await endTurn($, { agentId: 'sub1' })
   await seen.clock.advance(1000)
 
-  expect(seen.fills).toEqual([])
+  expect(seen.submits).toEqual([])
 })
 
-test('auto-pop keeps the idea queued where no prompt box takes it', async ($, on) => {
-  const seen = stub(on, { store: new Map([['session:s1', ['a']]]), fills: false })
+test('a prompt a hook drops stays in the stash', async ($, on) => {
+  const seen = stub(on, { store: new Map([['session:s1', ['a']]]), drops: true })
+  await startSession($)
 
   await endTurn($)
   await seen.clock.advance(1000)
 
+  expect(seen.submits).toEqual([{ text: 'a', asUser: true }])
   expect(seen.store.get('session:s1')).toEqual(['a'])
-  expect(seen.logs).toEqual([])
+})
+
+test('a non-interactive run (claude -p) never sends', async ($, on) => {
+  const seen = stub(on, { store: new Map([['session:s1', ['a']]]) })
+  await startSession($, false)
+
+  await endTurn($)
+  await seen.clock.advance(1000)
+
+  expect(seen.submits).toEqual([])
+  expect(seen.store.get('session:s1')).toEqual(['a'])
 })
 
 test('an empty stash makes a finished turn a no-op', async ($, on) => {
   const seen = stub(on)
+  await startSession($)
 
   await endTurn($)
   await seen.clock.advance(1000)
 
-  expect(seen.fills).toEqual([])
+  expect(seen.submits).toEqual([])
   expect(seen.toasts).toEqual([])
 })

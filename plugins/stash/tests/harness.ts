@@ -8,6 +8,8 @@ type Options = {
   fills?: boolean
   // what the prompt box already holds when the mod reads it
   draft?: string
+  // a hook drops the prompts the mod submits
+  drops?: boolean
 }
 
 export function stub(on, options: Options = {}) {
@@ -18,6 +20,7 @@ export function stub(on, options: Options = {}) {
     logs: [] as string[],
     statuses: [] as (string | undefined)[],
     fills: [] as { text: string; mode?: string }[],
+    submits: [] as { text: string; asUser?: boolean }[],
     commands: [] as Record<string, unknown>[],
   }
 
@@ -47,6 +50,10 @@ export function stub(on, options: Options = {}) {
     seen.fills.push({ text: e.text, mode: e.mode })
     return { isFilled: options.fills ?? true }
   })
+  on('prompt.submit', ($, e) => {
+    seen.submits.push({ text: e.text, asUser: e.origin?.asUser })
+    return options.drops ? { drop: 'muted' } : { text: e.text }
+  })
   on('prompt.read', () => ({ value: { text: options.draft ?? '', cursor: 0 } }))
   on('turn.start', ($, e) => ({ turnId: e.turnId }))
   on('turn.complete', ($, e) => ({ text: e.answer }))
@@ -63,6 +70,9 @@ export function stub(on, options: Options = {}) {
 }
 
 export const stash = ($, args = '') => $.command.run({ command: 'stash', args })
+
+export const startSession = ($, isInteractive = true) =>
+  $.session.start({ surface: 'terminal', isInteractive, cwd: '/work' })
 
 // A main-loop turn that ended with an answer, unless `fields` says otherwise.
 export const endTurn = ($, fields = {}) =>

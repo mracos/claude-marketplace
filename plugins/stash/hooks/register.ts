@@ -30,23 +30,26 @@ async function refreshStatus($): Promise<void> {
 }
 
 // A prompt queued behind a turn starts the next main-loop turn as soon as that
-// one ends, so a count that has not moved AUTO_POP_DELAY_MS after a turn
+// one ends, so a count that has not moved AUTO_SEND_DELAY_MS after a turn
 // ended means nothing was waiting.
-const AUTO_POP_DELAY_MS = 1000
+const AUTO_SEND_DELAY_MS = 1000
 let turnsStarted = 0
+// A sent idea starts a turn, so in claude -p it would keep the run going.
+let isInteractive = false
 
-// Only into an empty box, so it never lands on a draft or on the queued
-// prompts an interrupt hands back. Taken off the queue only once the box took
-// it: where there is no box (claude -p), it stays queued.
-async function autoPop($): Promise<void> {
+// The newest idea goes out as the next prompt, in the person's own words. Each
+// one starts a turn, whose end sends the next, so the stash drains one idea per
+// turn. Never while a draft or the prompts an interrupt hands back sit in the
+// box. Taken off the queue only once the prompt entered: a hook may drop it.
+async function autoSend($): Promise<void> {
   const items = await load($)
   const taken = take(items)
   if (!taken) return
   if ((await $.prompt.read()).text !== '') return
-  const filled = await $.prompt.fill({ text: taken.item, mode: 'insert' })
-  if (!filled.isFilled) return
+  const sent = await $.prompt.submit({ text: taken.item, asUser: true })
+  if ('drop' in sent) return
   await save($, taken.rest)
-  $.ui.toast(taken.rest.length === 0 ? 'Popped the last stashed idea' : `Popped (${taken.rest.length} queued)`)
+  $.ui.toast(taken.rest.length === 0 ? 'Sent the last stashed idea' : `Sent a stashed idea (${taken.rest.length} queued)`)
 }
 
 async function run($, args: string): Promise<void> {
@@ -94,6 +97,7 @@ async function run($, args: string): Promise<void> {
 
 export function register(on: On) {
   on('session.start', async ($, e, next) => {
+    isInteractive = e.isInteractive
     // First: a throw skips the rest of the hook, and a status line for a
     // command that failed to register (name taken) would be pointless anyway.
     await $.command.register({
@@ -120,13 +124,13 @@ export function register(on: On) {
   })
 
   // An interrupted or failed turn is the user stepping in, so only an answer
-  // pops the next idea.
+  // sends the next idea.
   on('turn.complete', async ($, e, next) => {
     const result = await next(e)
     if (e.agentId || e.reason !== 'answer') return result
     const startedBefore = turnsStarted
-    $.clock.after(AUTO_POP_DELAY_MS, () => {
-      if (turnsStarted === startedBefore) void autoPop($)
+    $.clock.after(AUTO_SEND_DELAY_MS, () => {
+      if (isInteractive && turnsStarted === startedBefore) void autoSend($)
     })
     return result
   })
