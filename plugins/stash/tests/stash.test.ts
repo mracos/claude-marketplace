@@ -43,9 +43,9 @@ test('take by number, and out of range is undefined', () => {
   expect(take([])).toBeUndefined()
 })
 
-test('formatList numbers from 1', () => {
-  expect(formatList(['a', 'b'])).toBe('1. a\n2. b')
-  expect(formatList([])).toBe('Stash is empty.')
+test('formatList numbers from 1, one line per idea', () => {
+  expect(formatList(['a', 'b'])).toEqual(['1. a', '2. b'])
+  expect(formatList([])).toEqual(['Stash is empty.'])
 })
 
 test('statusText clears the line when nothing is queued', () => {

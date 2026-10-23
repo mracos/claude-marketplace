@@ -30,13 +30,13 @@ test('push saves the idea and says nothing Claude reads', async ($, on) => {
   expect(seen.statuses).toEqual(['1 queued (/stash)'])
 })
 
-test('list shows numbered ideas as a dim line', async ($, on) => {
+test('list shows each numbered idea as its own dim line', async ($, on) => {
   const seen = stub(on, { store: new Map([['session:s1', ['a', 'b']]]) })
 
   await stash($)
   await stash($, 'list')
 
-  expect(seen.logs).toEqual(['1. a\n2. b', '1. a\n2. b'])
+  expect(seen.logs).toEqual(['1. a', '2. b', '1. a', '2. b'])
 })
 
 test('pop moves the newest idea into the prompt box', async ($, on) => {

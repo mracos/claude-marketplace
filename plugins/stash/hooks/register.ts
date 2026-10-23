@@ -61,7 +61,7 @@ async function run($, args: string): Promise<void> {
       $.ui.toast(USAGE)
       return
     case 'list':
-      $.ui.log(formatList(items))
+      for (const line of formatList(items)) $.ui.log(line)
       return
     case 'push':
       await save($, [...items, action.idea])

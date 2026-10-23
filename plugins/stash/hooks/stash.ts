@@ -46,9 +46,11 @@ export function take(items: readonly string[], index = items.length) {
   }
 }
 
-export function formatList(items: readonly string[]): string {
-  if (items.length === 0) return 'Stash is empty.'
-  return items.map((idea, i) => `${i + 1}. ${idea}`).join('\n')
+// One entry per line: $.ui.log draws a single line, so the list is logged line
+// by line rather than joined with newlines.
+export function formatList(items: readonly string[]): string[] {
+  if (items.length === 0) return ['Stash is empty.']
+  return items.map((idea, i) => `${i + 1}. ${idea}`)
 }
 
 export function statusText(count: number): string | undefined {
