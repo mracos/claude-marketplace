@@ -2,11 +2,9 @@
 
 A Claude Code mod that lists every pull request the session created in the hint line under the prompt. Claude Code itself shows only the latest one (`· PR #12`).
 
-```
-auto mode on (shift+tab to cycle)   [o] #31   [d] #34   [m] #29   [x] #27
-```
+![The hint line under the prompt listing two open PRs in green, then a closed and two merged ones dimmed](docs/screenshot.png)
 
-Each PR gets its state's octicon (`[o]` open, `[d]` draft, `[m]` merged, `[x]` closed above). Open PRs come first (green; drafts dimmed with the draft icon), then merged and closed ones, dimmed. Each is a link to the PR. Once the session has PRs in more than one repo, each carries its repo name (`infra#421`).
+Each PR gets its state's octicon, a Nerd Font glyph: open, draft, merged or closed. Open PRs come first (green; drafts dimmed with the draft icon), then merged and closed ones, dimmed. Each is a link to the PR. Once the session has PRs in more than one repo, each carries its repo name, as above.
 
 Tested with Claude Code **v2.1.287**. Mods need v2.1.287 or later.
 
