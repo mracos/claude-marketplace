@@ -13,7 +13,7 @@
     {
       "name": "prs",
       "source": "./plugins/prs",
-      "description": "Claude Code mod: every PR the session created under the prompt, open first, merged dimmed, closed red, each a link"
+      "description": "Claude Code mod: every PR the session created under the prompt, open first, merged purple, closed red, each a link"
     }
   ]
 }

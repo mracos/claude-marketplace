@@ -14,7 +14,7 @@ claude plugin install <plugin>@mracos
 | Plugin | What it does |
 |--------|--------------|
 | [`stash`](plugins/stash/README.md) | Claude Code mod: queue ideas mid-session with /stash, without interrupting Claude |
-| [`prs`](plugins/prs/README.md) | Claude Code mod: every PR the session created under the prompt, open first, merged dimmed, closed red, each a link |
+| [`prs`](plugins/prs/README.md) | Claude Code mod: every PR the session created under the prompt, open first, merged purple, closed red, each a link |
 
 Each plugin's README covers its usage, and `docs/integrating.md` beside it covers changing it.
 

@@ -1,6 +1,6 @@
 // Every PR the session created, in the hint line under the prompt, where the
 // engine shows only the latest (`· PR #12`): open first in green, then merged
-// dimmed and closed in red, each a link with its state's octicon (Nerd Font glyphs).
+// in purple and closed in red, each a link with its state's octicon (Nerd Font glyphs).
 //
 // The engine records each PR as a pr-link entry in the session's transcript,
 // which $.session.messages() leaves out and which outgrows $.fs.read's 4 MiB,
@@ -23,7 +23,7 @@ const ICONS: Record<PrState, string> = {
   CLOSED: '\uf4dc',
 }
 
-const COLORS: Partial<Record<PrState, string>> = { OPEN: 'green', CLOSED: 'red' }
+const COLORS: Partial<Record<PrState, string>> = { OPEN: 'green', MERGED: 'magenta', CLOSED: 'red' }
 
 async function prLinkLines($: EngineInterface): Promise<string> {
   const home = await $.env.get('HOME')
