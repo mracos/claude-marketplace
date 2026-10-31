@@ -1,7 +1,7 @@
 {
   "name": "prs",
   "version": "0.1.0",
-  "description": "List every PR the session created under the prompt: open first, merged and closed dimmed, each a link",
+  "description": "List every PR the session created under the prompt: open first, merged dimmed, closed red, each a link",
   "author": {
     "name": "mracos"
   },
