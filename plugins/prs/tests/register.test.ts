@@ -16,7 +16,7 @@ for (const surface of ['terminal', 'desktop'] as const) {
     expect(await ui.find({ type: 'Link' })).toBeUndefined()
   })
 
-  test(`${surface}: lists open PRs first, merged and closed after, each a link`, async ($, on) => {
+  test(`${surface}: links each open and draft PR, and counts merged and closed after`, async ($, on) => {
     const { clock } = stub(on, {
       transcript: [link('acme/app', 1), link('acme/app', 2), link('acme/app', 3), link('acme/app', 4)],
       states: { [URL(1)]: 'MERGED', [URL(2)]: 'OPEN', [URL(3)]: 'CLOSED', [URL(4)]: 'DRAFT' },
@@ -28,11 +28,28 @@ for (const surface of ['terminal', 'desktop'] as const) {
 
     expect(await ui.find({ type: 'Text', text: 'auto mode on (shift+tab to cycle)' })).toBeDefined()
     const links = await ui.findAll({ type: 'Link' })
-    expect(links.map(l => l.props.href)).toEqual([URL(2), URL(4), URL(1), URL(3)])
-    expect(links.map(l => l.props.label)).toEqual(['\uf407 #2', '\uf4dd #4', '\uf419 #1', '\uf4dc #3'])
+    expect(links.map(l => l.props.href)).toEqual([URL(2), URL(4)])
+    expect(links.map(l => l.props.label)).toEqual(['\uf407 #2', '\uf4dd #4'])
+    expect(await ui.find({ type: 'Text', text: '\uf419 +1 merged' })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: '\uf4dc +1 closed' })).toBeDefined()
   })
 
-  test(`${surface}: open PRs are green, merged purple, closed red, drafts dimmed`, async ($, on) => {
+  test(`${surface}: a state with nothing in it has no count`, async ($, on) => {
+    const { clock } = stub(on, {
+      transcript: [link('acme/app', 1), link('acme/app', 2)],
+      states: { [URL(1)]: 'MERGED', [URL(2)]: 'MERGED' },
+    })
+
+    await $.session.start({ surface, isInteractive: true, cwd: '/repo' })
+    await clock.settle()
+    const ui = await $.ui.mount(hint(surface))
+
+    expect(await ui.find({ type: 'Text', text: '\uf419 +2 merged' })).toBeDefined()
+    const texts = (await ui.findAll({ type: 'Text' })).map(t => t.text)
+    expect(texts.filter(t => t?.includes('closed'))).toEqual([])
+  })
+
+  test(`${surface}: open PRs are green, drafts dimmed, the merged count purple, the closed one red`, async ($, on) => {
     const { clock } = stub(on, {
       transcript: [link('acme/app', 1), link('acme/app', 2), link('acme/app', 3), link('acme/app', 4)],
       states: { [URL(1)]: 'MERGED', [URL(2)]: 'OPEN', [URL(3)]: 'CLOSED', [URL(4)]: 'DRAFT' },
@@ -42,14 +59,14 @@ for (const surface of ['terminal', 'desktop'] as const) {
     await clock.settle()
     const ui = await $.ui.mount(hint(surface))
 
-    const style = async (n: number) => {
-      const t = await ui.find({ type: 'Text', text: `#${n}` })
+    const style = async (text: string) => {
+      const t = await ui.find({ type: 'Text', text })
       return [t?.props.color, Boolean(t?.props.dimColor)]
     }
-    expect(await style(2)).toEqual(['green', false])
-    expect(await style(3)).toEqual(['red', false])
-    expect(await style(4)).toEqual([undefined, true])
-    expect(await style(1)).toEqual(['magenta', false])
+    expect(await style('#2')).toEqual(['green', false])
+    expect(await style('#4')).toEqual([undefined, true])
+    expect(await style('\uf419 +1 merged')).toEqual(['magenta', false])
+    expect(await style('\uf4dc +1 closed')).toEqual(['red', false])
   })
 
   test(`${surface}: more PRs than the line holds wrap onto new lines`, async ($, on) => {

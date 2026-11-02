@@ -34,12 +34,13 @@ export function parseGhState(stdout: string): PrState {
 
 export const isFinal = (state: PrState) => state === 'MERGED' || state === 'CLOSED'
 
-// Open (and not yet known) first, then merged and closed, each in the order the
-// session made them.
-export const footerOrder = (prs: readonly Pr[]): Pr[] => [
-  ...prs.filter(pr => !isFinal(pr.state)),
-  ...prs.filter(pr => isFinal(pr.state)),
-]
+// Open (and not yet known) PRs one by one, in the order the session made them;
+// merged and closed only counted, so the line stays short however many land.
+export const footer = (prs: readonly Pr[]) => ({
+  live: prs.filter(pr => !isFinal(pr.state)),
+  merged: prs.filter(pr => pr.state === 'MERGED').length,
+  closed: prs.filter(pr => pr.state === 'CLOSED').length,
+})
 
 // `#12`, or `infra#12` once the session has PRs in more than one repo.
 export function label(pr: Pr, prs: readonly Pr[]): string {

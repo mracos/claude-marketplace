@@ -1,5 +1,5 @@
 import { expect, test } from 'claude-code/testing'
-import { footerOrder, label, parseGhState, parsePrLinks, stripEnginePr } from '../hooks/prs.ts'
+import { footer, label, parseGhState, parsePrLinks, stripEnginePr } from '../hooks/prs.ts'
 import { link, pr } from './harness.ts'
 
 test('parsePrLinks keeps pr-link entries once each, in transcript order', () => {
@@ -14,10 +14,13 @@ test('parseGhState reads drafts apart from open', () => {
   expect(parseGhState('{"state":"MERGED","isDraft":false}')).toBe('MERGED')
 })
 
-test('footerOrder puts merged and closed after the rest, keeping order', () => {
-  const prs = [pr('a/b', 1, 'MERGED'), pr('a/b', 2, 'OPEN'), pr('a/b', 3, 'CLOSED'), pr('a/b', 4, 'UNKNOWN')]
+test('footer lists the live PRs in order and only counts merged and closed', () => {
+  const prs = [pr('a/b', 1, 'MERGED'), pr('a/b', 2, 'OPEN'), pr('a/b', 3, 'CLOSED'), pr('a/b', 4, 'UNKNOWN'), pr('a/b', 5, 'MERGED')]
 
-  expect(footerOrder(prs).map(p => p.number)).toEqual([2, 4, 1, 3])
+  const { live, merged, closed } = footer(prs)
+
+  expect(live.map(p => p.number)).toEqual([2, 4])
+  expect([merged, closed]).toEqual([2, 1])
 })
 
 test('label names the repo only when the session spans several', () => {

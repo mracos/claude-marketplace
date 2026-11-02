@@ -6,7 +6,7 @@ For changing or extending the mod. Usage is in the [README](../README.md).
 
 | Path | Holds |
 |------|-------|
-| `hooks/prs.ts` | Pure logic: parsing `pr-link` lines, reading `gh`'s JSON, footer order, labels, dropping the engine's own pill |
+| `hooks/prs.ts` | Pure logic: parsing `pr-link` lines, reading `gh`'s JSON, the footer's split into listed PRs and merged/closed counts, labels, dropping the engine's own pill |
 | `hooks/register.tsx` | The hooks module: refresh on `session.start`, `turn.complete` and a timer; the `PromptHint` render |
 | `types/index.d.ts` | `Pr`, `PrState`, and the `prs.list` state contract |
 | `tests/prs.test.ts` | Unit tests for `hooks/prs.ts` |
