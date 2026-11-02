@@ -51,6 +51,21 @@ for (const surface of ['terminal', 'desktop'] as const) {
     expect(await style(4)).toEqual([undefined, true])
     expect(await style(1)).toEqual(['magenta', false])
   })
+
+  test(`${surface}: more PRs than the line holds wrap onto new lines`, async ($, on) => {
+    const many = Array.from({ length: 12 }, (_, i) => i + 1)
+    const { clock } = stub(on, {
+      transcript: many.map(n => link('acme/app', n)),
+      states: Object.fromEntries(many.map(n => [URL(n), 'OPEN' as const])),
+    })
+
+    await $.session.start({ surface, isInteractive: true, cwd: '/repo' })
+    await clock.settle()
+    const ui = await $.ui.mount(hint(surface))
+
+    expect(await ui.drawn()).toMatchObject({ type: 'Box', props: { flexWrap: 'wrap' } })
+    expect(await ui.findAll({ type: 'Link' })).toHaveLength(12)
+  })
 }
 
 test('merged and closed PRs are never asked about again; open ones are', async ($, on) => {

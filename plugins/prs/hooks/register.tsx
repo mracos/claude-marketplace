@@ -81,11 +81,11 @@ export const register: Register = on => {
 
     const { Box, Text, Link } = $.ui.resolve(e)
     return (
-      <Box>
+      // wrap, or a row wider than the terminal shrinks every item and breaks each label mid-word
+      <Box flexWrap="wrap" columnGap={2}>
         <Text dimColor>{stripEnginePr(e.props.hint)}</Text>
         {footerOrder(prs).map(pr => (
           <Text key={pr.url} color={COLORS[pr.state]} dimColor={!COLORS[pr.state]}>
-            {'  '}
             <Link href={pr.url} label={`${ICONS[pr.state]} ${label(pr, prs)}`} />
           </Text>
         ))}
