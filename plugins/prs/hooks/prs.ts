@@ -34,13 +34,25 @@ export function parseGhState(stdout: string): PrState {
 
 export const isFinal = (state: PrState) => state === 'MERGED' || state === 'CLOSED'
 
-// Open (and not yet known) PRs one by one, in the order the session made them;
-// merged and closed only counted, so the line stays short however many land.
-export const footer = (prs: readonly Pr[]) => ({
-  live: prs.filter(pr => !isFinal(pr.state)),
-  merged: prs.filter(pr => pr.state === 'MERGED').length,
-  closed: prs.filter(pr => pr.state === 'CLOSED').length,
-})
+// Cells the hint line loses to the prompt's padding, which the viewport's width
+// still counts.
+const HINT_INSET = 4
+
+// What the footer draws in `columns` cells after `hint`: every PR, open (and not
+// yet known) first, then merged and closed, each in the order the session made
+// them. When that overflows, merged and closed only counted at the end. With no
+// width measured, every PR, and the line wraps.
+export function footer(prs: readonly Pr[], hint: string, columns?: number) {
+  const live = prs.filter(pr => !isFinal(pr.state))
+  const final = prs.filter(pr => isFinal(pr.state))
+  const merged = final.filter(pr => pr.state === 'MERGED').length
+  const closed = final.length - merged
+  // a PR is its octicon, a space and its label; two cells of gap before each
+  const width = [...hint].length + prs.reduce((w, pr) => w + 4 + label(pr, prs).length, 0)
+  return columns === undefined || width <= columns - HINT_INSET
+    ? { listed: [...live, ...final], merged: 0, closed: 0 }
+    : { listed: live, merged, closed }
+}
 
 // `#12`, or `infra#12` once the session has PRs in more than one repo.
 export function label(pr: Pr, prs: readonly Pr[]): string {

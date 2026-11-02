@@ -4,7 +4,7 @@ A Claude Code mod that lists every pull request the session created in the hint 
 
 ![The hint line under the prompt listing two open PRs in green, then a closed and two merged ones dimmed](docs/screenshot.png)
 
-Open PRs are listed one by one, green, each a link to the PR with its state's octicon (a Nerd Font glyph); drafts are dimmed with the draft icon. Merged and closed ones are only counted after them, `+3 merged` in purple and `+1 closed` in red, so the line stays short in a long session. Once the session has PRs in more than one repo, each carries its repo name.
+Each PR gets its state's octicon, a Nerd Font glyph: open, draft, merged or closed. Open PRs come first (green; drafts dimmed with the draft icon), then merged ones in purple and closed ones in red. Each is a link to the PR. When they no longer fit the terminal's width, merged and closed shrink to a count each at the end, `+3 merged` and `+1 closed`. Once the session has PRs in more than one repo, each carries its repo name.
 
 Tested with Claude Code **v2.1.287**. Mods need v2.1.287 or later.
 

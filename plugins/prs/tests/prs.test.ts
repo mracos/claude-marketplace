@@ -14,12 +14,23 @@ test('parseGhState reads drafts apart from open', () => {
   expect(parseGhState('{"state":"MERGED","isDraft":false}')).toBe('MERGED')
 })
 
-test('footer lists the live PRs in order and only counts merged and closed', () => {
+test('footer lists every PR, open first, while the line fits or is unmeasured', () => {
+  const prs = [pr('a/b', 1, 'MERGED'), pr('a/b', 2, 'OPEN'), pr('a/b', 3, 'CLOSED'), pr('a/b', 4, 'UNKNOWN')]
+
+  for (const columns of [undefined, 200]) {
+    const { listed, merged, closed } = footer(prs, 'hint', columns)
+
+    expect(listed.map(p => p.number)).toEqual([2, 4, 1, 3])
+    expect([merged, closed]).toEqual([0, 0])
+  }
+})
+
+test('footer only counts merged and closed once the line overflows', () => {
   const prs = [pr('a/b', 1, 'MERGED'), pr('a/b', 2, 'OPEN'), pr('a/b', 3, 'CLOSED'), pr('a/b', 4, 'UNKNOWN'), pr('a/b', 5, 'MERGED')]
 
-  const { live, merged, closed } = footer(prs)
+  const { listed, merged, closed } = footer(prs, 'hint', 20)
 
-  expect(live.map(p => p.number)).toEqual([2, 4])
+  expect(listed.map(p => p.number)).toEqual([2, 4])
   expect([merged, closed]).toEqual([2, 1])
 })
 

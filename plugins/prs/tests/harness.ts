@@ -48,10 +48,12 @@ export function stub(on: On, options: Options = {}) {
   return { seen, clock }
 }
 
-export const hint = (surface: 'terminal' | 'desktop', text = 'auto mode on (shift+tab to cycle) · PR #2') =>
+// `columns` is the terminal's width as the engine measured it; left out, unmeasured
+export const hint = (surface: 'terminal' | 'desktop', text = 'auto mode on (shift+tab to cycle) · PR #2', columns?: number) =>
   ({
     plugin: 'prs',
     surface,
     component: 'PromptHint',
     props: { isDraft: false, isWorking: false, hint: text },
+    ...(columns === undefined ? {} : { viewport: { columns, rows: 40 } }),
   }) as const

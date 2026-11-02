@@ -1,6 +1,7 @@
 // Every PR the session created, in the hint line under the prompt, where the
-// engine shows only the latest (`· PR #12`): open ones in green, each a link with
-// its state's octicon (Nerd Font glyphs), then a count of merged (purple) and closed (red).
+// engine shows only the latest (`· PR #12`): open first in green, then merged in
+// purple and closed in red, each a link with its state's octicon (Nerd Font
+// glyphs). Past the terminal's width, merged and closed shrink to a count each.
 //
 // The engine records each PR as a pr-link entry in the session's transcript,
 // which $.session.messages() leaves out and which outgrows $.fs.read's 4 MiB,
@@ -80,7 +81,8 @@ export const register: Register = on => {
     if (prs.length === 0) return next(e)
 
     const { Box, Text, Link } = $.ui.resolve(e)
-    const { live, merged, closed } = footer(prs)
+    const hint = stripEnginePr(e.props.hint)
+    const { listed, merged, closed } = footer(prs, hint, e.viewport?.columns)
     const count = (state: 'MERGED' | 'CLOSED', n: number) =>
       n > 0 && (
         <Text key={state} color={COLORS[state]}>
@@ -90,8 +92,8 @@ export const register: Register = on => {
     return (
       // wrap, or a row wider than the terminal shrinks every item and breaks each label mid-word
       <Box flexWrap="wrap" columnGap={2}>
-        <Text dimColor>{stripEnginePr(e.props.hint)}</Text>
-        {live.map(pr => (
+        <Text dimColor>{hint}</Text>
+        {listed.map(pr => (
           <Text key={pr.url} color={COLORS[pr.state]} dimColor={!COLORS[pr.state]}>
             <Link href={pr.url} label={`${ICONS[pr.state]} ${label(pr, prs)}`} />
           </Text>
