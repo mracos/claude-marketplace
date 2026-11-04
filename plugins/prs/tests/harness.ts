@@ -7,6 +7,13 @@ import type { Pr, PrState } from '../types'
 export const link = (repo: string, n: number) =>
   JSON.stringify({ type: 'pr-link', prNumber: n, prUrl: `https://github.com/${repo}/pull/${n}`, prRepository: repo })
 
+// A Bash result the engine tagged as creating `created`, printing `stdout`
+export const created = (repo: string, n: number, stdout: string) =>
+  JSON.stringify({
+    type: 'user',
+    toolUseResult: { stdout, gitOperation: { pr: { number: n, url: `https://github.com/${repo}/pull/${n}`, action: 'created' } } },
+  })
+
 export const pr = (repo: string, n: number, state: PrState = 'UNKNOWN'): Pr => ({
   url: `https://github.com/${repo}/pull/${n}`,
   number: n,

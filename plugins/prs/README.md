@@ -22,7 +22,7 @@ claude plugin install prs@mracos
 
 ## How it works
 
-Claude Code writes a `pr-link` entry to the session transcript for each PR it creates or attaches. The mod reads those, asks `gh pr view` for each one's state when the session starts, after every turn and every two minutes, and stops asking once a PR is merged or closed.
+Claude Code writes a `pr-link` entry to the session transcript for each PR it creates or attaches, but only one per command: a loop that opens four PRs links the last. So the mod also reads the output of each command Claude Code saw create a PR and takes every PR URL of that repo in it. It asks `gh pr view` for each one's state when the session starts, after every turn and every two minutes, and stops asking once a PR is merged or closed.
 
 ## Tests
 

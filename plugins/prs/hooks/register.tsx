@@ -4,8 +4,9 @@
 // glyphs). Past the terminal's width, merged and closed shrink to a count each.
 //
 // The engine records each PR as a pr-link entry in the session's transcript,
-// which $.session.messages() leaves out and which outgrows $.fs.read's 4 MiB,
-// so grep pulls the entries. State comes from gh, every two minutes and after
+// one per command, so the commands it saw create a PR are read too. The
+// transcript outgrows $.fs.read's 4 MiB and $.session.messages() leaves pr-link
+// out, so grep pulls both. State comes from gh, every two minutes and after
 // each turn; merged and closed are final and never asked again.
 import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register } from 'claude-code'
@@ -32,7 +33,7 @@ async function prLinkLines($: EngineInterface): Promise<string> {
   const r = await $.process.run([
     'sh',
     '-c',
-    'grep -hF \'"type":"pr-link"\' "$1"/projects/*/"$2".jsonl',
+    'grep -hF -e \'"type":"pr-link"\' -e \'"gitOperation":{"pr":\' "$1"/projects/*/"$2".jsonl',
     'sh',
     config,
     await $.session.id(),

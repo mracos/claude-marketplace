@@ -1,11 +1,18 @@
 import { expect, test } from 'claude-code/testing'
 import { footer, label, parseGhState, parsePrLinks, stripEnginePr } from '../hooks/prs.ts'
-import { link, pr } from './harness.ts'
+import { created, link, pr } from './harness.ts'
 
 test('parsePrLinks keeps pr-link entries once each, in transcript order', () => {
   const jsonl = [link('acme/app', 2), '{"type":"user"}', link('acme/app', 1), link('acme/app', 2), '{"type":"pr-li'].join('\n')
 
   expect(parsePrLinks(jsonl)).toEqual([pr('acme/app', 2), pr('acme/app', 1)])
+})
+
+test('parsePrLinks finds every PR one command created, though the engine links only the last', () => {
+  const out = ['https://github.com/acme/app/pull/6', 'https://github.com/acme/app/pull/7', 'see https://github.com/other/lib/pull/3'].join('\n')
+  const jsonl = [link('acme/app', 5), created('acme/app', 7, out), link('acme/app', 7)].join('\n')
+
+  expect(parsePrLinks(jsonl)).toEqual([pr('acme/app', 5), pr('acme/app', 6), pr('acme/app', 7)])
 })
 
 test('parseGhState reads drafts apart from open', () => {

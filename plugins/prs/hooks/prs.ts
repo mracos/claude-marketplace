@@ -1,12 +1,38 @@
-// The pure half of the prs mod: reading the session's pr-link entries out of
+// The pure half of the prs mod: reading the session's PRs out of
 // its transcript, reading gh's answer, and laying the PRs out for the footer.
 import type { Pr, PrState } from '../types'
+
+type Entry = {
+  type?: string
+  prUrl?: unknown
+  prNumber?: unknown
+  prRepository?: unknown
+  toolUseResult?: { stdout?: unknown; gitOperation?: { pr?: { url?: unknown; action?: unknown } } }
+}
+
+// The engine links one PR per command, the last it printed, so a command that
+// opens several leaves the others out. Its output still names them: every PR
+// URL of the same repo in a command the engine saw create one.
+function createdTogether(entry: Entry): Pr[] {
+  const result = entry.toolUseResult
+  const created = result?.gitOperation?.pr
+  if (created?.action !== 'created' || typeof created.url !== 'string' || typeof result?.stdout !== 'string') return []
+  const repo = created.url.match(/^https:\/\/github\.com\/([^/]+\/[^/]+)\/pull\/\d+$/)?.[1]
+  if (!repo) return []
+  const escaped = repo.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  return [...result.stdout.matchAll(new RegExp(`https://github\\.com/${escaped}/pull/(\\d+)`, 'g'))].map(m => ({
+    url: m[0],
+    number: Number(m[1]),
+    repo,
+    state: 'UNKNOWN' as const,
+  }))
+}
 
 export function parsePrLinks(jsonl: string): Pr[] {
   const found = new Map<string, Pr>()
   for (const line of jsonl.split('\n')) {
     if (!line.trim()) continue
-    let entry: { type?: string; prUrl?: unknown; prNumber?: unknown; prRepository?: unknown }
+    let entry: Entry
     try {
       entry = JSON.parse(line)
     } catch {
@@ -14,13 +40,11 @@ export function parsePrLinks(jsonl: string): Pr[] {
       // only malformed one there is, and the next refresh reads it whole.
       continue
     }
-    if (entry.type !== 'pr-link' || typeof entry.prUrl !== 'string' || found.has(entry.prUrl)) continue
-    found.set(entry.prUrl, {
-      url: entry.prUrl,
-      number: Number(entry.prNumber),
-      repo: String(entry.prRepository ?? ''),
-      state: 'UNKNOWN',
-    })
+    const prs =
+      entry.type === 'pr-link' && typeof entry.prUrl === 'string'
+        ? [{ url: entry.prUrl, number: Number(entry.prNumber), repo: String(entry.prRepository ?? ''), state: 'UNKNOWN' as const }]
+        : createdTogether(entry)
+    for (const pr of prs) if (!found.has(pr.url)) found.set(pr.url, pr)
   }
   return [...found.values()]
 }
